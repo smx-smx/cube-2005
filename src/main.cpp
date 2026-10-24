@@ -42,8 +42,80 @@ void *alloc(int s)              // for some big chunks... most other allocs use 
     return b;
 };
 
+#ifdef CUBE_NC4
+int scr_w = 1280;               // the only mode of LG NetCast TVs
+int scr_h = 720;
+#else
 int scr_w = 640;
 int scr_h = 480;
+#endif
+
+#if SDL_MAJOR_VERSION >= 2
+SDL_Window *screen = NULL;
+static bool keyrepeaton = false;
+
+// SDL 2 key code -> SDL 1.2 key code, which data/keymap.cfg binds
+int sdl1keycode(const SDL_Keysym &keysym)
+{
+    SDL_Keycode k = keysym.sym;
+    if(k < 128) return k;                       // ASCII keys have the same codes
+    if(k >= SDLK_F1 && k <= SDLK_F12) return 282 + (k - SDLK_F1);
+    if(k >= SDLK_KP_1 && k <= SDLK_KP_9) return 257 + (k - SDLK_KP_1);
+    switch(k)
+    {
+        case SDLK_KP_0: return 256;
+        case SDLK_KP_PERIOD: return 266;
+        case SDLK_KP_DIVIDE: return 267;
+        case SDLK_KP_MULTIPLY: return 268;
+        case SDLK_KP_MINUS: return 269;
+        case SDLK_KP_PLUS: return 270;
+        case SDLK_KP_ENTER: return 271;
+        case SDLK_KP_EQUALS: return 272;
+        case SDLK_UP: return 273;
+        case SDLK_DOWN: return 274;
+        case SDLK_RIGHT: return 275;
+        case SDLK_LEFT: return 276;
+        case SDLK_INSERT: return 277;
+        case SDLK_HOME: return 278;
+        case SDLK_END: return 279;
+        case SDLK_PAGEUP: return 280;
+        case SDLK_PAGEDOWN: return 281;
+        case SDLK_F13: return 294;
+        case SDLK_F14: return 295;
+        case SDLK_F15: return 296;
+        case SDLK_NUMLOCKCLEAR: return 300;
+        case SDLK_CAPSLOCK: return 301;
+        case SDLK_SCROLLLOCK: return 302;
+        case SDLK_RSHIFT: return 303;
+        case SDLK_LSHIFT: return 304;
+        case SDLK_RCTRL: return 305;
+        case SDLK_LCTRL: return 306;
+        case SDLK_RALT: return 307;
+        case SDLK_LALT: return 308;
+        case SDLK_RGUI: return 309;
+        case SDLK_LGUI: return 310;
+        case SDLK_MODE: return 313;
+        case SDLK_HELP: return 315;
+        case SDLK_PRINTSCREEN: return 316;
+        case SDLK_SYSREQ: return 317;
+        case SDLK_PAUSE: return 19;
+        case SDLK_MENU: return 319;
+        case SDLK_POWER: return 320;
+        case SDLK_UNDO: return 322;
+        case SDLK_AC_BACK: return 27;           // remote controls: Back is Escape
+        default: return 0;
+    }
+}
+
+// the console uses SDL 1.2 unicode values, derive them from the key code
+static int keyunicode(const SDL_Keysym &keysym)
+{
+    SDL_Keycode k = keysym.sym;
+    if(k < 32 || k >= 127) return k < 32 ? k : 0;
+    if((keysym.mod & KMOD_SHIFT) && k >= 'a' && k <= 'z') return k - 'a' + 'A';
+    return k;
+}
+#endif
 
 void screenshot()
 {
@@ -74,8 +146,12 @@ COMMAND(quit, ARG_NONE);
 
 void keyrepeat(bool on)
 {
+    #if SDL_MAJOR_VERSION >= 2
+    keyrepeaton = on;                           // SDL 2 always repeats, repeats are dropped when off
+    #else
     SDL_EnableKeyRepeat(on ? SDL_DEFAULT_REPEAT_DELAY : 0,
                              SDL_DEFAULT_REPEAT_INTERVAL);
+    #endif
 };
 
 VARF(gamespeed, 10, 100, 1000, if(multiplayer()) gamespeed = 100);
@@ -87,7 +163,11 @@ int framesinmap = 0;
 int main(int argc, char **argv)
 {    
     bool dedicated = false;
+    #if SDL_MAJOR_VERSION >= 2
+    int fs = SDL_WINDOW_FULLSCREEN, par = 0, uprate = 0, maxcl = 4;
+    #else
     int fs = SDL_FULLSCREEN, par = 0, uprate = 0, maxcl = 4;
+    #endif
     char *sdesc = "", *ip = "", *master = NULL, *passwd = "";
     islittleendian = *((char *)&islittleendian);
 
@@ -114,7 +194,7 @@ int main(int argc, char **argv)
         else conoutf("unknown commandline argument");
     };
     
-    #ifdef _DEBUG
+    #if defined(_DEBUG) && SDL_MAJOR_VERSION < 2
     par = SDL_INIT_NOPARACHUTE;
     fs = 0;
     #endif
@@ -135,11 +215,27 @@ int main(int argc, char **argv)
 
     log("video: mode");
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    #if SDL_MAJOR_VERSION >= 2
+    #ifdef CUBE_GLES
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 1);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+    #endif
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 16);
+    screen = SDL_CreateWindow("cube engine", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, scr_w, scr_h,
+                              SDL_WINDOW_OPENGL|fs);
+    if(!screen || !SDL_GL_CreateContext(screen)) fatal("Unable to create OpenGL screen");
+    SDL_GetWindowSize(screen, &scr_w, &scr_h);
+
+    log("video: misc");
+    if(SDL_SetRelativeMouseMode(SDL_TRUE)<0) conoutf("no relative mouse mode: %s", (size_t)SDL_GetError());
+    #else
     if(SDL_SetVideoMode(scr_w, scr_h, 0, SDL_OPENGL|fs)==NULL) fatal("Unable to create OpenGL screen");
 
     log("video: misc");
     SDL_WM_SetCaption("cube engine", NULL);
     SDL_WM_GrabInput(SDL_GRAB_ON);
+    #endif
     keyrepeat(false);
     SDL_ShowCursor(0);
 
@@ -191,7 +287,11 @@ int main(int argc, char **argv)
         fps = (1000.0f/curtime+fps*50)/51;
         computeraytable(player1->o.x, player1->o.y);
         readdepth(scr_w, scr_h);
+        #if SDL_MAJOR_VERSION >= 2
+        SDL_GL_SwapWindow(screen);
+        #else
         SDL_GL_SwapBuffers();
+        #endif
         extern void updatevol(); updatevol();
         if(framesinmap++<5)	// cheap hack to get rid of initial sparklies, even when triple buffering etc.
         {
@@ -212,7 +312,12 @@ int main(int argc, char **argv)
 
                 case SDL_KEYDOWN: 
                 case SDL_KEYUP: 
+                    #if SDL_MAJOR_VERSION >= 2
+                    if(event.key.repeat && !keyrepeaton) break;
+                    keypress(sdl1keycode(event.key.keysym), event.key.state==SDL_PRESSED, keyunicode(event.key.keysym));
+                    #else
                     keypress(event.key.keysym.sym, event.key.state==SDL_PRESSED, event.key.keysym.unicode);
+                    #endif
                     break;
 
                 case SDL_MOUSEMOTION:

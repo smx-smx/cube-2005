@@ -62,7 +62,11 @@ void resolverinit(int threads, int limit)
         resolverthread &rt = resolverthreads.add();
         rt.query = NULL;
         rt.starttime = 0;
+        #if SDL_MAJOR_VERSION >= 2
+        rt.thread = SDL_CreateThread(resolverloop, "resolver", &rt);
+        #else
         rt.thread = SDL_CreateThread(resolverloop, &rt);
+        #endif
         --threads;
     };
 };
@@ -70,11 +74,16 @@ void resolverinit(int threads, int limit)
 void resolverstop(resolverthread &rt, bool restart)
 {
     SDL_LockMutex(resolvermutex);
+    #if SDL_MAJOR_VERSION >= 2
+    // SDL 2 can't kill threads: the thread finishes its lookup and waits for the next query
+    (void)restart;
+    #else
     SDL_KillThread(rt.thread);
-    rt.query = NULL;
-    rt.starttime = 0;
     rt.thread = NULL;
     if(restart) rt.thread = SDL_CreateThread(resolverloop, &rt);
+    #endif
+    rt.query = NULL;
+    rt.starttime = 0;
     SDL_UnlockMutex(resolvermutex);
 }; 
 

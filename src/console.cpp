@@ -102,7 +102,10 @@ COMMANDN(bind, bindkey, ARG_2STR);
 
 void saycommand(char *init)                         // turns input to the command line on or off
 {
-    SDL_EnableUNICODE(saycommandon = (init!=NULL));
+    saycommandon = (init!=NULL);
+    #if SDL_MAJOR_VERSION < 2
+    SDL_EnableUNICODE(saycommandon);
+    #endif
     if(!editmode) keyrepeat(saycommandon);
     if(!init) init = "";
     strcpy_s(commandbuf, init);
@@ -113,7 +116,7 @@ void mapmsg(char *s) { strn0cpy(hdr.maptitle, s, 128); };
 COMMAND(saycommand, ARG_VARI);
 COMMAND(mapmsg, ARG_1STR);
 
-#ifndef WIN32
+#if !defined(WIN32) && SDL_MAJOR_VERSION < 2
 #include <X11/Xlib.h>
 #include <SDL_syswm.h>
 #endif
@@ -127,6 +130,11 @@ void pasteconsole()
     strcat_s(commandbuf, cb);
     GlobalUnlock(cb);
     CloseClipboard();
+    #elif SDL_MAJOR_VERSION >= 2
+    char *cb = SDL_GetClipboardText();
+    if(!cb) return;
+    strcat_s(commandbuf, cb);
+    SDL_free(cb);
     #else
     SDL_SysWMinfo wminfo;
     SDL_VERSION(&wminfo.version); 

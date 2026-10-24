@@ -270,12 +270,21 @@ enum    // function signatures for script functions, see command.cpp
 
 #include <time.h>
 
-#include <GL/gl.h>
-#include <GL/glu.h>
-#include <GL/glext.h>
+#ifdef CUBE_GLES
+	#include "gles1compat.h"		// OpenGL ES 1.1, e.g. LG NetCast
+#else
+	#include <GL/gl.h>
+	#include <GL/glu.h>
+	#include <GL/glext.h>
+#endif
 
 #include <SDL.h>
 #include <SDL_image.h>
+
+#if SDL_MAJOR_VERSION >= 2
+	#include "sdl1keys.h"			// key codes stay the SDL 1.2 ones keymap.cfg uses
+	extern SDL_Window *screen;
+#endif
 
 #include <enet/enet.h>
 

@@ -235,7 +235,11 @@ void addstrip(int tex, int start, int n)
 VARFP(gamma, 30, 100, 300,
 {
     float f = gamma/100.0f;
+    #if SDL_MAJOR_VERSION >= 2
+    if(SDL_SetWindowBrightness(screen, f)==-1)
+    #else
     if(SDL_SetGamma(f,f,f)==-1)
+    #endif
     {
         conoutf("Could not set gamma (card/driver doesn't support it?)");
         conoutf("sdl: %s", SDL_GetError());
