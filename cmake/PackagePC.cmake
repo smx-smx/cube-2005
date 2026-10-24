@@ -8,6 +8,7 @@ install(PROGRAMS deploy/pc/cube.sh DESTINATION .)
 
 if (CUBE_DATA_DIR)
     install(DIRECTORY ${CUBE_DATA_DIR}/data ${CUBE_DATA_DIR}/packages ${CUBE_DATA_DIR}/demos DESTINATION .)
+    install(FILES ${CUBE_DATA_DIR}/autoexec.cfg DESTINATION .)
     install(DIRECTORY DESTINATION savegames)
     install(DIRECTORY DESTINATION screenshots)
 else ()
