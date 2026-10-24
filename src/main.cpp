@@ -71,10 +71,11 @@ int sdl1keycode(const SDL_Keysym &keysym)
         case SDLK_KP_PLUS: return 270;
         case SDLK_KP_ENTER: return 271;
         case SDLK_KP_EQUALS: return 272;
-        case SDLK_UP: return 273;
-        case SDLK_DOWN: return 274;
+        // sdl1keys.h redefines SDLK_UP/DOWN/LEFT to the SDL 1.2 codes
+        case SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_UP): return 273;
+        case SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_DOWN): return 274;
         case SDLK_RIGHT: return 275;
-        case SDLK_LEFT: return 276;
+        case SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_LEFT): return 276;
         case SDLK_INSERT: return 277;
         case SDLK_HOME: return 278;
         case SDLK_END: return 279;
@@ -202,6 +203,9 @@ int main(int argc, char **argv)
     fs = 0;
     #endif
 
+    #if SDL_MAJOR_VERSION >= 2
+    SDL_SetHint(SDL_HINT_NO_SIGNAL_HANDLERS, "1");  // Ctrl-C quits, also the dedicated server
+    #endif
     if(SDL_Init(SDL_INIT_TIMER|SDL_INIT_VIDEO|par)<0) fatal("Unable to initialize SDL");
 
     log("net");
