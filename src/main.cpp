@@ -53,6 +53,7 @@ int scr_h = 480;
 #if SDL_MAJOR_VERSION >= 2
 SDL_Window *screen = NULL;
 static bool keyrepeaton = false;
+static bool textinput = false;                  // characters come from SDL_TEXTINPUT, not from key codes
 
 // SDL 2 key code -> SDL 1.2 key code, which data/keymap.cfg binds
 int sdl1keycode(const SDL_Keysym &keysym)
@@ -155,6 +156,15 @@ void keyrepeat(bool on)
     #endif
 };
 
+void textinputmode(bool on)
+{
+    #if SDL_MAJOR_VERSION >= 2
+    if(!textinput) return;
+    if(on) SDL_StartTextInput(); else SDL_StopTextInput();
+    SDL_FlushEvent(SDL_TEXTINPUT);              // drop the text of the key that opened the console
+    #endif
+};
+
 VARF(gamespeed, 10, 100, 1000, if(multiplayer()) gamespeed = 100);
 VARP(minmillis, 0, 5, 1000);
 
@@ -233,6 +243,9 @@ int main(int argc, char **argv)
                               SDL_WINDOW_OPENGL|fs);
     if(!screen || !SDL_GL_CreateContext(screen)) fatal("Unable to create OpenGL screen");
     SDL_GetWindowSize(screen, &scr_w, &scr_h);
+    // keyboard layouts need SDL_TEXTINPUT; the nc4 driver (TV remote) only sends key events
+    textinput = strcmp(SDL_GetCurrentVideoDriver(), "nc4")!=0;
+    SDL_StopTextInput();
 
     log("video: misc");
     if(SDL_SetRelativeMouseMode(SDL_TRUE)<0) conoutf("no relative mouse mode: %s", (size_t)SDL_GetError());
@@ -321,7 +334,16 @@ int main(int argc, char **argv)
                 case SDL_KEYUP: 
                     #if SDL_MAJOR_VERSION >= 2
                     if(event.key.repeat && !keyrepeaton) break;
-                    keypress(sdl1keycode(event.key.keysym), event.key.state==SDL_PRESSED, keyunicode(event.key.keysym));
+                {
+                    int cooked = keyunicode(event.key.keysym);
+                    if(textinput && cooked>=32) cooked = 0;     // arrives as SDL_TEXTINPUT
+                    keypress(sdl1keycode(event.key.keysym), event.key.state==SDL_PRESSED, cooked);
+                    break;
+                }
+
+                case SDL_TEXTINPUT:
+                    // the console font is ASCII only
+                    for(const char *c = event.text.text; *c; c++) if(*c>=32 && *c<127) keypress(0, true, *c);
                     #else
                     keypress(event.key.keysym.sym, event.key.state==SDL_PRESSED, event.key.keysym.unicode);
                     #endif
@@ -335,10 +357,29 @@ int main(int argc, char **argv)
                 case SDL_MOUSEBUTTONDOWN:
                 case SDL_MOUSEBUTTONUP:
                     if(lasttype==event.type && lastbut==event.button.button) break; // why?? get event twice without it
+                    #if SDL_MAJOR_VERSION >= 2
+                    // SDL 1.2 numbers: 4/5 are the wheel, X1/X2 come after them
+                    keypress(-(event.button.button>=SDL_BUTTON_X1 ? event.button.button+2 : event.button.button),
+                             event.button.state!=0, 0);
+                    #else
                     keypress(-event.button.button, event.button.state!=0, 0);
+                    #endif
                     lasttype = event.type;
                     lastbut = event.button.button;
                     break;
+
+                #if SDL_MAJOR_VERSION >= 2
+                case SDL_MOUSEWHEEL:
+                {
+                    // SDL 1.2 reported the wheel as buttons 4 (up) and 5 (down), pressed and released
+                    int y = event.wheel.direction==SDL_MOUSEWHEEL_FLIPPED ? -event.wheel.y : event.wheel.y;
+                    if(!y) break;
+                    int code = y>0 ? -4 : -5;
+                    keypress(code, true, 0);
+                    keypress(code, false, 0);
+                    break;
+                }
+                #endif
             };
         };
     };

@@ -127,6 +127,7 @@ extern int isoccluded(float vx, float vy, float cx, float cy, float csize);
 extern void fatal(char *s, char *o = "");
 extern void *alloc(int s);
 extern void keyrepeat(bool on);
+extern void textinputmode(bool on);
 
 // rendertext
 extern void draw_text(char *str, int left, int top, int gl_num);

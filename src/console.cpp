@@ -107,6 +107,7 @@ void saycommand(char *init)                         // turns input to the comman
     SDL_EnableUNICODE(saycommandon);
     #endif
     if(!editmode) keyrepeat(saycommandon);
+    textinputmode(saycommandon);
     if(!init) init = "";
     strcpy_s(commandbuf, init);
 };
