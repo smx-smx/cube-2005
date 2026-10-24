@@ -170,6 +170,9 @@ int main(int argc, char **argv)
     #endif
     char *sdesc = "", *ip = "", *master = NULL, *passwd = "";
     islittleendian = *((char *)&islittleendian);
+    #ifdef CUBE_NC4
+    setvbuf(stdout, NULL, _IONBF, 0);           // cube.sh logs to a file, don't lose the end of it
+    #endif
 
     #define log(s) conoutf("init: %s", s)
     log("sdl");

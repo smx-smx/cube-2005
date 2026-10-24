@@ -46,8 +46,12 @@ void gl_init(int w, int h)
 
     char *exts = (char *)glGetString(GL_EXTENSIONS);
     
+    #ifdef CUBE_GLES
+    hasoverbright = true;                           // texture_env_combine is core in GLES 1.1
+    #else
     if(strstr(exts, "GL_EXT_texture_env_combine")) hasoverbright = true;
-    else conoutf("WARNING: cannot use overbright lighting, using old lighting model!");
+    #endif
+    if(!hasoverbright) conoutf("WARNING: cannot use overbright lighting, using old lighting model!");
         
     glGetIntegerv(GL_MAX_TEXTURE_SIZE, &glmaxtexsize);
         
