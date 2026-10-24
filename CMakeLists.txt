@@ -41,3 +41,5 @@ target_link_directories(cube PRIVATE ${SDL2_LIBRARY_DIRS} ${SDL2_IMAGE_LIBRARY_D
 target_link_options(cube PRIVATE -static-libstdc++ -static-libgcc)
 target_link_libraries(cube PRIVATE enet ${SDL2_MIXER_LIBRARIES} ${SDL2_IMAGE_LIBRARIES} ${SDL2_LIBRARIES}
         ${GLES1_LIBRARY} ZLIB::ZLIB m)
+
+include(cmake/PackageNC4.cmake)
