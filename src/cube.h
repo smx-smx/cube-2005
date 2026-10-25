@@ -280,6 +280,9 @@ enum    // function signatures for script functions, see command.cpp
 
 #include <SDL.h>
 #include <SDL_image.h>
+#ifdef CUBE_WEBOS
+	#include <SDL_webOS.h>
+#endif
 
 #if SDL_MAJOR_VERSION >= 2
 	#include "sdl1keys.h"			// key codes stay the SDL 1.2 ones keymap.cfg uses

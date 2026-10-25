@@ -1,0 +1,8 @@
+{
+  "name": "cube-webos-tools",
+  "private": true,
+  "description": "webOS packaging tools for the Cube build (npm ci in tools/webos)",
+  "devDependencies": {
+    "@webos-tools/cli": "3.2.6"
+  }
+}

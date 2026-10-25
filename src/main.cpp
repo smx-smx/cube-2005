@@ -1,6 +1,9 @@
 // main.cpp: initialisation & main loop
 
 #include "cube.h"
+#ifdef CUBE_WEBOS
+#include <unistd.h>
+#endif
 
 void cleanup(char *msg)         // single program exit point;
 {
@@ -42,8 +45,8 @@ void *alloc(int s)              // for some big chunks... most other allocs use 
     return b;
 };
 
-#ifdef CUBE_NC4
-int scr_w = 1280;               // the only mode of LG NetCast TVs
+#if defined(CUBE_NC4) || defined(CUBE_WEBOS)
+int scr_w = 1280;               // the only mode of LG NetCast TVs, webOS scales it to the panel
 int scr_h = 720;
 #else
 int scr_w = 640;
@@ -105,6 +108,9 @@ int sdl1keycode(const SDL_Keysym &keysym)
         case SDLK_POWER: return 320;
         case SDLK_UNDO: return 322;
         case SDLK_AC_BACK: return 27;           // remote controls: Back is Escape
+        #ifdef CUBE_WEBOS
+        case SDL_SCANCODE_TO_KEYCODE(SDL_WEBOS_SCANCODE_BACK): return 27;
+        #endif
         default: return 0;
     }
 }
@@ -181,7 +187,14 @@ int main(int argc, char **argv)
     #endif
     char *sdesc = "", *ip = "", *master = NULL, *passwd = "";
     islittleendian = *((char *)&islittleendian);
-    #ifdef CUBE_NC4
+    #ifdef CUBE_WEBOS
+    // the app manager starts cube elsewhere, the data (and the writable config) is in the app folder
+    char *home = getenv("HOME");
+    if(home) chdir(home);
+    freopen("cube.log", "a", stdout);
+    dup2(fileno(stdout), fileno(stderr));
+    #endif
+    #if defined(CUBE_NC4) || defined(CUBE_WEBOS)
     setvbuf(stdout, NULL, _IONBF, 0);           // cube.sh logs to a file, don't lose the end of it
     #endif
 
@@ -215,6 +228,10 @@ int main(int argc, char **argv)
 
     #if SDL_MAJOR_VERSION >= 2
     SDL_SetHint(SDL_HINT_NO_SIGNAL_HANDLERS, "1");  // Ctrl-C quits, also the dedicated server
+    #ifdef CUBE_WEBOS
+    SDL_SetHint(SDL_HINT_WEBOS_ACCESS_POLICY_KEYS_BACK, "true");    // Back opens the menu instead of leaving
+    SDL_SetHint(SDL_HINT_WEBOS_ACCESS_POLICY_KEYS_EXIT, "true");
+    #endif
     #endif
     if(SDL_Init(SDL_INIT_TIMER|SDL_INIT_VIDEO|par)<0) fatal("Unable to initialize SDL");
 
@@ -243,8 +260,9 @@ int main(int argc, char **argv)
                               SDL_WINDOW_OPENGL|fs);
     if(!screen || !SDL_GL_CreateContext(screen)) fatal("Unable to create OpenGL screen");
     SDL_GetWindowSize(screen, &scr_w, &scr_h);
-    // keyboard layouts need SDL_TEXTINPUT; the nc4 driver (TV remote) only sends key events
-    textinput = strcmp(SDL_GetCurrentVideoDriver(), "nc4")!=0;
+    // keyboard layouts need SDL_TEXTINPUT; the nc4 driver (TV remote) only sends key events,
+    // and on webOS it would bring up the on-screen keyboard
+    textinput = strcmp(SDL_GetCurrentVideoDriver(), "nc4")!=0 && strcmp(SDL_GetCurrentVideoDriver(), "webos")!=0;
     SDL_StopTextInput();
 
     log("video: misc");

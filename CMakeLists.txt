@@ -1,4 +1,4 @@
-# Cube (2005_08_29) on SDL 2 and SDL2_mixer, for LG NetCast 4.x (OpenGL ES 1.1) or a PC (OpenGL).
+# Cube (2005_08_29) on SDL 2 and SDL2_mixer, for LG NetCast 4.x / webOS (OpenGL ES 1.1) or a PC (OpenGL).
 # Both builds speak the same network protocol, so they can play together in a LAN.
 #
 # LG NetCast 4.x:
@@ -6,6 +6,12 @@
 #   cmake -B build-nc4 -DCMAKE_TOOLCHAIN_FILE=cmake/NC4Toolchain.cmake \
 #         -DCUBE_DATA_DIR=/path/to/cube_2005_08_29_unix/cube -DCMAKE_INSTALL_PREFIX=<usb>/nc4-homebrew/cube
 #   cmake --build build-nc4 && cmake --install build-nc4
+#
+# LG webOS (an IPK in dist/, needs the webOS CLI: cd tools/webos && npm ci):
+#   export WEBOS_SDK=/path/to/arm-webos-linux-gnueabi_sdk-buildroot
+#   cmake -B build-webos -DCMAKE_TOOLCHAIN_FILE=cmake/WebOSToolchain.cmake \
+#         -DCUBE_DATA_DIR=/path/to/cube_2005_08_29_unix/cube
+#   cmake --build build-webos --target webos-package-cube
 #
 # PC:
 #   cmake -B build -DCUBE_DATA_DIR=/path/to/cube_2005_08_29_unix/cube -DCMAKE_INSTALL_PREFIX=$HOME/cube
@@ -22,8 +28,13 @@ pkg_check_modules(SDL2_MIXER REQUIRED SDL2_mixer)
 find_package(ZLIB REQUIRED)
 if (NC4_SDK)
     set(CUBE_NC4 ON)
+elseif (WEBOS_SDK)
+    set(CUBE_WEBOS ON)
 endif ()
-option(CUBE_GLES "Render with OpenGL ES 1.1 instead of OpenGL" ${CUBE_NC4})
+if (CUBE_NC4 OR CUBE_WEBOS)
+    set(CUBE_TV ON)
+endif ()
+option(CUBE_GLES "Render with OpenGL ES 1.1 instead of OpenGL" ${CUBE_TV})
 if (CUBE_GLES)
     find_library(GL_LIBRARIES GLESv1_CM REQUIRED)
 else ()
@@ -49,7 +60,8 @@ add_executable(cube
         src/serverms.cpp src/serverutil.cpp src/sound.cpp src/tools.cpp src/weapon.cpp src/world.cpp
         src/worldio.cpp src/worldlight.cpp src/worldocull.cpp src/worldrender.cpp
         $<$<BOOL:${CUBE_GLES}>:src/gles1compat.cpp>)
-target_compile_definitions(cube PRIVATE $<$<BOOL:${CUBE_GLES}>:CUBE_GLES> $<$<BOOL:${CUBE_NC4}>:CUBE_NC4>)
+target_compile_definitions(cube PRIVATE $<$<BOOL:${CUBE_GLES}>:CUBE_GLES> $<$<BOOL:${CUBE_NC4}>:CUBE_NC4>
+        $<$<BOOL:${CUBE_WEBOS}>:CUBE_WEBOS>)
 target_include_directories(cube PRIVATE ${SDL2_INCLUDE_DIRS} ${SDL2_IMAGE_INCLUDE_DIRS} ${SDL2_MIXER_INCLUDE_DIRS})
 # 2005 C++: string literals as char *, implicit conversions...
 target_compile_options(cube PRIVATE -std=gnu++98 -fsigned-char -fpermissive -Wno-write-strings -Wno-format-security)
@@ -57,10 +69,14 @@ target_link_directories(cube PRIVATE ${SDL2_LIBRARY_DIRS} ${SDL2_IMAGE_LIBRARY_D
 target_link_libraries(cube PRIVATE enet ${SDL2_MIXER_LIBRARIES} ${SDL2_IMAGE_LIBRARIES} ${SDL2_LIBRARIES}
         ${GL_LIBRARIES} ZLIB::ZLIB m)
 
-if (CUBE_NC4)
+if (CUBE_TV)
     # the TV's app environment preloads libraries that pull in the firmware's old libstdc++
     target_link_options(cube PRIVATE -static-libstdc++ -static-libgcc)
+endif ()
+if (CUBE_NC4)
     include(cmake/PackageNC4.cmake)
+elseif (CUBE_WEBOS)
+    include(cmake/PackageWebOS.cmake)
 else ()
     include(cmake/PackagePC.cmake)
 endif ()

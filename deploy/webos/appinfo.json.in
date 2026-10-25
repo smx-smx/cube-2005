@@ -1,0 +1,15 @@
+{
+    "id": "@WEBOS_APPINFO_ID@",
+    "version": "1.0.0",
+    "vendor": "openlgtv",
+    "type": "native",
+    "main": "cube",
+    "title": "Cube",
+    "icon": "icon.png",
+    "largeIcon": "icon_large.png",
+    "iconColor": "#202020",
+    "appDescription": "Cube 2005_08_29 FPS engine",
+    "supportTouchMode": "full",
+    "useAllMouseButtons": true,
+    "requiredACG": []
+}
