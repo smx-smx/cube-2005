@@ -328,13 +328,6 @@ void gl_drawframe(int w, int h, float curfps)
         glFogi(GL_FOG_END, (fog+96)/8);
     };
     
-    #ifdef CUBE_NC4
-    // the TV blends its graphics plane over the TV/menu planes with our alpha: keep it opaque,
-    // blending (e.g. the menu's GL_ZERO, GL_ONE_MINUS_SRC_COLOR box) would punch holes in it
-    glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_TRUE);
-    glClear(GL_COLOR_BUFFER_BIT);
-    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
-    #endif
     glClear((player1->outsidemap ? GL_COLOR_BUFFER_BIT : 0) | GL_DEPTH_BUFFER_BIT);
 
     glMatrixMode(GL_PROJECTION);
